@@ -3,43 +3,25 @@ using System.Collections.Generic;
 
 namespace AstroHelpers
 {
-    /// <summary>
-    /// Klasa do obliczania wschodu i zachodu Księżyca z rozszerzonym modelem Meeusa.
-    /// - Uwzględnia argumenty D, M, M', F i kilkanaście terminów w Δλ, Δβ, Δr
-    /// - Paralaksa topocentryczna, refrakcja, bisekcja momentu wschodu/zachodu
-    /// - Skanuje 48h, filtruje zdarzenia do jednej doby lokalnej
-    /// 
-    /// Aby uzyskać jeszcze większą dokładność (błąd <5 min), należy użyć pełnego
-    /// zestawu ~60 terminów Meeusa lub efemeryd NASA/JPL (DE430/DE440).
-    /// </summary>
     public static class MoonRiseSetCalculator
     {
-        private const double Obliquity = 23.4393;     // Nachylenie ekliptyki (J2000)
-        private const double BaseRefractionDeg = 0.57; // Refrakcja ~0.57°
-        private const double HorizonOffset = 0.83;     // Refrakcja + półśrednica Księżyca (ok.)
+        private const double Obliquity = 23.4393;     
+        private const double BaseRefractionDeg = 0.57; 
+        private const double HorizonOffset = 0.83;     
 
-        /// <summary>
-        /// Główna metoda: zwraca (Moonrise, Moonset) dla doby lokalnej [date, date+1).
-        /// Internie skanuje 48h (±12h) wokół tej doby, by nie gubić zdarzeń tuż po północy.
-        /// </summary>
         public static (DateTime? Moonrise, DateTime? Moonset) GetMoonRiseSetTimes(
             double latitudeDeg, double longitudeDeg,
             DateTime dateLocal, TimeZoneInfo timeZone = null)
         {
             timeZone ??= TimeZoneInfo.Local;
 
-            // 1. Ustalamy początek doby (lokalnie)
-            // dateLocal.Date => 00:00 tego dnia
             DateTime local0h = dateLocal.Date;
-            DateTime local1h = local0h.AddDays(1); // koniec doby
+            DateTime local1h = local0h.AddDays(1);
 
-            // 2. Konwertujemy do UTC
             DateTime utcDayStart = TimeZoneInfo.ConvertTimeToUtc(local0h, timeZone);
-            // Zdefiniujmy szerokie okno 48h: [utcDayStart-12h, utcDayStart+36h]
             DateTime utcScanStart = utcDayStart.AddHours(-12);
             DateTime utcScanEnd = utcDayStart.AddHours(36);
 
-            // 3. W pętli co 1 min szukamy crossingów alt=HorizonOffset
             List<(DateTime crossingUtc, bool goingUp)> events = new List<(DateTime, bool)>();
 
             double prevAlt = GetTopocentricAltitude(utcScanStart, latitudeDeg, longitudeDeg);
@@ -50,15 +32,13 @@ namespace AstroHelpers
             {
                 double alt = GetTopocentricAltitude(t, latitudeDeg, longitudeDeg);
 
-                // Wschód: alt przechodzi offset w górę
                 if (prevAlt <= HorizonOffset && alt > HorizonOffset)
                 {
                     DateTime crossing = FindAltitudeCrossingBisect(
                         tPrev, prevAlt, t, alt, HorizonOffset, latitudeDeg, longitudeDeg);
-                    events.Add((crossing, true)); // goingUp = true
+                    events.Add((crossing, true));
                 }
 
-                // Zachód: alt przechodzi offset w dół
                 if (prevAlt >= HorizonOffset && alt < HorizonOffset)
                 {
                     DateTime crossing = FindAltitudeCrossingBisect(
@@ -70,7 +50,6 @@ namespace AstroHelpers
                 prevAlt = alt;
             }
 
-            // 4. Konwertujemy te zdarzenia do czasu lokalnego i filtrujemy do doby [local0h, local1h)
             var dayEvents = new List<(DateTime crossingLocal, bool goingUp)>();
             foreach (var ev in events)
             {
@@ -80,10 +59,8 @@ namespace AstroHelpers
                     dayEvents.Add((loc, ev.goingUp));
                 }
             }
-            // Sortujemy chronologicznie
             dayEvents.Sort((a, b) => a.crossingLocal.CompareTo(b.crossingLocal));
 
-            // 5. Wybieramy pierwszy wschód (goingUp=true) i pierwszy zachód (goingUp=false)
             DateTime? riseLocal = null;
             DateTime? setLocal = null;
             foreach (var eDay in dayEvents)
@@ -102,10 +79,6 @@ namespace AstroHelpers
             return (riseLocal, setLocal);
         }
 
-        /// <summary>
-        /// Oblicza wysokość Księżyca topocentrycznie. 
-        /// Używa rozszerzonego modelu Meeusa do (x,y,z) Księżyca.
-        /// </summary>
         private static double GetTopocentricAltitude(DateTime utc, double latDeg, double lonDeg)
         {
             var (mx, my, mz) = GetMoonPositionEquatorialMeeus(utc);
@@ -130,15 +103,11 @@ namespace AstroHelpers
             return alt;
         }
 
-        /// <summary>
-        /// Pozycja Księżyca w układzie równikowym (Meeus, kilkanaście terminów).
-        /// </summary>
         private static (double x, double y, double z) GetMoonPositionEquatorialMeeus(DateTime utc)
         {
             double jd = ToJulianDate(utc);
             double T = (jd - 2451545.0) / 36525.0;
 
-            // Argumenty D, M, M', F
             double D = NormalizeDegrees(297.85036 + 445267.11148 * T - 0.0019142 * T * T);
             double M = NormalizeDegrees(357.52772 + 35999.05034 * T - 0.0001603 * T * T);
             double Mp = NormalizeDegrees(134.96298 + 477198.867398 * T + 0.0086972 * T * T);
@@ -149,11 +118,9 @@ namespace AstroHelpers
             double Mprad = Deg2Rad(Mp);
             double Frad = Deg2Rad(F);
 
-            // L' (Meeus eq. 47.1 w uproszczeniu)
             double Lprime = 218.316 + 481267.8813 * T;
-            double a = 60.2666; // ~ promień orbity w Rz
+            double a = 60.2666; 
 
-            // Dodatkowe termy
             double dL = 0.0, dB = 0.0, dR = 0.0;
 
             var terms = new (double coeffL, double coeffB, double coeffR,
@@ -166,7 +133,6 @@ namespace AstroHelpers
                 ( -0.1851,  +0.0,      0.0,     0, +1,  0,  0),
                 ( -0.1143,  +0.0,      0.0,     0,  0,  0, +2),
 
-                // Δβ
                 (  0.0,    +5.128,   0.0,      0,  0,  0, +1),
                 (  0.0,    +0.280,   0.0,      0,  0, +1, +1),
                 (  0.0,    +0.277,   0.0,      0,  0, +1, -1),
@@ -201,9 +167,6 @@ namespace AstroHelpers
             return (xequat, yequat, zequat);
         }
 
-        /// <summary>
-        /// Pozycja obserwatora (Ziemia=R=1) w układzie równikowym, E>0 => GMST - longitude
-        /// </summary>
         private static (double x, double y, double z) GetObserverPositionEquatorial(
             DateTime utc, double latDeg, double lonDeg)
         {
@@ -221,9 +184,6 @@ namespace AstroHelpers
             return (x, y, z);
         }
 
-        /// <summary>
-        /// Znajduje moment przecięcia alt=offset metodą bisekcji w [t1, t2].
-        /// </summary>
         private static DateTime FindAltitudeCrossingBisect(
             DateTime t1, double alt1,
             DateTime t2, double alt2,
@@ -288,7 +248,6 @@ namespace AstroHelpers
             double d = jd - 2451545.0;
             double T = d / 36525.0;
 
-            // GMST(0h) Meeus
             double gmst0h = 6.697374558
                             + 2400.051336 * T
                             + 0.000025862 * (T * T);
