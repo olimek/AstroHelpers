@@ -2,9 +2,7 @@
 
 namespace AstroHelpers
 {
-    /// <summary>
-    /// Podstawowe informacje o fazie Księżyca.
-    /// </summary>
+
     public class MoonInfo
     {
         public DateTime DateTimeLocal { get; set; }
@@ -17,33 +15,22 @@ namespace AstroHelpers
     {
         private const double SynodicMonth = 29.5305882;
 
-        /// <summary>
-        /// Zwraca podstawowe informacje o Księżycu (faza, oświetlenie, wiek) 
-        /// dla zadanej daty i strefy czasowej.
-        /// </summary>
-        /// <param name="dateTime">Data i czas, które chcesz przeanalizować.</param>
-        /// <param name="timeZone">Strefa czasowa. Domyślnie = lokalna systemu.</param>
+
         public static MoonInfo GetMoonInfo(DateTime dateTime, TimeZoneInfo timeZone = null)
         {
             timeZone ??= TimeZoneInfo.Local;
 
-            // 1. Konwertujemy do UTC
             DateTime utcTime = TimeZoneInfo.ConvertTimeToUtc(dateTime, timeZone);
             double jd = ToJulianDate(utcTime);
 
-            // 2. Dni od epoki 2000
             double daysSinceEpoch2000 = jd - 2451549.5;
 
-            // 3. Wiek Księżyca w dniach
             double moonAge = (daysSinceEpoch2000 % SynodicMonth + SynodicMonth) % SynodicMonth;
 
-            // 4. Ułamek cyklu
             double phaseFraction = moonAge / SynodicMonth;
 
-            // 5. Oświetlenie
             double illumination = 0.5 * (1 - Math.Cos(2.0 * Math.PI * phaseFraction));
 
-            // 6. Nazwa fazy
             string phaseName = GetPhaseName(phaseFraction);
 
             return new MoonInfo
@@ -87,7 +74,7 @@ namespace AstroHelpers
 
         private static string GetPhaseName(double phaseFraction)
         {
-            // Umowny podział
+
             if (phaseFraction < 0.03 || phaseFraction > 0.97)
                 return "New Moon";
             else if (phaseFraction < 0.22)
