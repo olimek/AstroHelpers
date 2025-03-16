@@ -12,7 +12,7 @@ namespace AstroTester
             double longitude = 17.03;
 
             // Data, dla której chcemy sprawdzić fazę i czasy wsch./zach. Księżyca
-            DateTime date = new DateTime(2025, 3, 16);
+            DateTime date = new DateTime(2025, 3, 20);
 
             // 1. Pobierzemy informacje o Księżycu (faza, wiek, oświetlenie) z klasy MoonCalculator
             var moonInfo = MoonCalculator.GetMoonInfo(date);
