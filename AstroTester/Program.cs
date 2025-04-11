@@ -10,10 +10,12 @@ namespace AstroTester
             // Przykładowa lokalizacja: Warszawa (ok. 52°N, 21°E)
             double latitude = 51.1;
             double longitude = 17.03;
-
+            DateTime inputTime = DateTime.Now;
             // Data, dla której chcemy sprawdzić fazę i czasy wsch./zach. Księżyca
-            DateTime date = new DateTime(2025, 3, 20);
-
+            inputTime = DateTime.SpecifyKind(inputTime, DateTimeKind.Local);  // Ustawienie właściwości Kind
+            TimeZoneInfo targetTimeZone = TimeZoneInfo.FindSystemTimeZoneById("Eastern Standard Time");
+            DateTime date = TimeZoneInfo.ConvertTime(inputTime, TimeZoneInfo.Local, targetTimeZone);
+      
             // 1. Pobierzemy informacje o Księżycu (faza, wiek, oświetlenie) z klasy MoonCalculator
             var moonInfo = MoonCalculator.GetMoonInfo(date);
 

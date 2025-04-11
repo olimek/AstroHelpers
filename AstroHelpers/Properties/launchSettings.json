@@ -1,0 +1,11 @@
+{
+  "profiles": {
+    "AstroHelpers": {
+      "commandName": "Project"
+    },
+    "Profile 1": {
+      "commandName": "Executable",
+      "executablePath": "C:\\Users\\Ollie\\source\\repos\\AstroHelpers\\AstroTester\\bin\\Debug\\net9.0\\AstroTester.exe"
+    }
+  }
+}
